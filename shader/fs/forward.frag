@@ -29,6 +29,7 @@ precision mediump float;
 #define CANTERS2_ID 38426587.
 #define CYLINDRICAL_EQUAL_AREA_ID -1.
 #define MIXPROJECTION -9999.0
+#define DOUBLE_PROJECTION_ID 2017.
 
 // FIXME should be int
 uniform float projectionID;
@@ -39,6 +40,11 @@ uniform float mix1ProjectionID;
 // FIXME should be int
 uniform float mix2ProjectionID;
 uniform float mixWeight;
+
+//doubleproj
+uniform float proj_a_ID;
+uniform float proj_b_ID;
+uniform float weight;
 
 uniform sampler2D texture;
 varying vec2 textureCoord;
@@ -530,8 +536,8 @@ vec2 invProjection(in vec2 xy, in float projectionID) {
     if (projectionID == EPSG_LAMBERT_CYLINDRICAL_TRANSVERSE) {
         return invLambertCylindricalTransverse(xy);
     }
-    // if (projectionID == EPSG_MERCATOR) {
-    return invMercator(xy);
+    //if (projectionID == EPSG_MERCATOR) {
+    //return invMercator(xy);
 }
 
 vec2 invProjectionMix(in vec2 xy) {
@@ -543,6 +549,7 @@ vec2 invProjectionMix(in vec2 xy) {
     vec2 inv1 = invProjection(xy, mix1ProjectionID);
     vec2 inv2 = invProjection(xy, mix2ProjectionID);
     vec2 lonLat = mix(inv2, inv1, mixWeight);
+
     
     for (int i = 0; i < MAX_LOOP; i++) {
         // difference in projected coordinates
@@ -564,6 +571,33 @@ vec2 invProjectionMix(in vec2 xy) {
     return lonLat;
 }
 
+vec2 invDoubleProjection(in vec2 lonlat) {
+    // proj_a.forward(lon, lat, xy);
+    vec2 xy1 = project(lonlat, proj_a_ID);
+    
+    // xy[0] *= w; xy[1] *= w;
+    xy1.x *= weight;
+    xy1.y *= weight;
+    
+    // proj_a.inverse(xy[0], xy[1], lonlat);
+	// proj_b.forward(lonlat[0], lonlat[1], xy);
+    vec2 lonlat1 = invProjection(xy1, proj_a_ID);
+    vec2 xy2 = project(lonlat1, proj_b_ID);
+
+    // ------------------------------------------ 
+    // vec2 m1 = (1., 0.);
+    // vec2 m2 = (0., 1.);
+    // const newWeight = 1/weight;
+    // ------------------------------------------
+    
+    // xy2.x *= newWeight;
+    // xy2.y *= 1/weight;
+    // xy2.x = 1 * xy2.x + 0 * xy2.y;
+    // xy2.y = 0 * xy2.x + 1 * xy2.y;
+    return xy2; 
+
+}
+
 void main(void) {
     if (alongAntimeridian > 0.) {
         // inverse projection and texture sampling
@@ -571,8 +605,8 @@ void main(void) {
         xy.y -= falseNorthing;
         
         vec2 lonLat;
-        if (projectionID == MIXPROJECTION) {
-            lonLat = invProjectionMix(xy);
+        if (projectionID == DOUBLE_PROJECTION_ID) {
+            lonLat = invDoubleProjection(xy);
         } else {
             lonLat = invProjection(xy, projectionID);
         }

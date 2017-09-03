@@ -293,14 +293,14 @@ ProjectionFactory.create = function(conf) {
         //     // Use a weight for a smooth transition from the transformed to the regular Lambert azimuthal projection
         //     projection.transformToLambertAzimuthal(w);
         // } else {
-        //     // small scale projection is not a transformed Lambert azimuthal
-        //     // create a blend between the small-scale projection and the Lambert azimuthal (via a modified Hammer)
+        // //     // small scale projection is not a transformed Lambert azimuthal
+        // //     // create a blend between the small-scale projection and the Lambert azimuthal (via a modified Hammer)
             p1 = ProjectionFactory.getSmallScaleProjection(conf.smallScaleProjectionName);
             // TODO use a transformed Lambert with a pole line when the world projection has a pole line?
             p2 = TransformedLambertAzimuthal.Hammer();
             p2.transformToLambertAzimuthal(w);
             projection = new DoubleProjection(p1, p2, w);
-        //}
+        // }
 
         if (conf.rotateSmallScale) {
             // latitude of the transformed pole
