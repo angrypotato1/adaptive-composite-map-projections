@@ -571,7 +571,11 @@ vec2 invProjectionMix(in vec2 xy) {
     return lonLat;
 }
 
+
 vec2 invDoubleProjection(in vec2 lonlat) {
+    /* something funky going on with the weight
+       type conversion error? */
+    
     // proj_a.forward(lon, lat, xy);
     vec2 xy1 = project(lonlat, proj_a_ID);
     
@@ -585,7 +589,7 @@ vec2 invDoubleProjection(in vec2 lonlat) {
     vec2 xy2 = project(lonlat1, proj_b_ID);
 
     // ------------------------------------------ 
-    // vec2 m1 = (1., 0.);
+    // vec2 m1 = (1., 0.); 
     // vec2 m2 = (0., 1.);
     // const newWeight = 1/weight;
     // ------------------------------------------

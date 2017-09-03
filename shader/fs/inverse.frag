@@ -24,6 +24,12 @@ precision mediump float;
 #define CANTERS2_ID 38426587.
 #define CYLINDRICAL_EQUAL_AREA_ID -1.
 #define MIXPROJECTION -9999.0
+#define DOUBLE_PROJECTION_ID 2017.
+
+//doubleproj
+uniform float proj_a_ID;
+uniform float proj_b_ID;
+uniform float weight;
 
 // FIXME should be int
 uniform float projectionID;
@@ -574,16 +580,37 @@ vec2 invProjectionMix(in vec2 xy) {
     return vec2(lon, lat);
 }
 
+vec2 invDoubleProjection(in vec2 xy) {
+    /* lookup array definitions GLSL and W issues
+    vec2 lonlat = (0., 0.);
+    
+    xy.x = 1 * xy.x + 0 * xy.y;
+    xy.y = 0 * xy.x + 1 * xy.y;
+
+    xy.x *= weight;
+    xy.y *= weight;
+    
+    vec2 lonlat = invProjection(xy, proj_b_ID);
+    vec2 xy = project(lonlat, proj_b_ID);
+
+    xy.x *= 1/weight;
+    xy.y *= 1/weight;
+
+    vec2 lonlat = invProjection(xy, proj_a_ID); 
+    */
+    return lonlat; 
+}
+
 void main(void) {
     vec2 xy = (gl_FragCoord.xy - dXY) / scaleXY * 2.;
     xy.y -= falseNorthing;
 
     vec2 lonLat;
-//	if (projectionID == MIXPROJECTION) {
-//		lonLat = invProjectionMix(xy);
-//	} else {
+	if (projectionID == DOUBLE_PROJECTION_ID) {
+		lonLat = invDoubleProjection(xy);
+	} else {
 		lonLat = invProjection(xy, projectionID);
-//	}
+	}
     if (cosLatPole != 0.) {
         lonLat = transformSphere(lonLat);
     }
