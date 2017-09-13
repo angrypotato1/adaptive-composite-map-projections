@@ -588,16 +588,10 @@ vec2 invDoubleProjection(in vec2 lonlat) {
     vec2 lonlat1 = invProjection(xy1, proj_a_ID);
     vec2 xy2 = project(lonlat1, proj_b_ID);
 
-    // ------------------------------------------ 
-    // vec2 m1 = (1., 0.); 
-    // vec2 m2 = (0., 1.);
-    // const newWeight = 1/weight;
-    // ------------------------------------------
-    
-    // xy2.x *= newWeight;
-    // xy2.y *= 1/weight;
-    // xy2.x = 1 * xy2.x + 0 * xy2.y;
-    // xy2.y = 0 * xy2.x + 1 * xy2.y;
+    xy2.x *= newWeight;
+    xy2.y *= 1/weight;
+    xy2.x = 1 * xy2.x + 0 * xy2.y;
+    xy2.y = 0 * xy2.x + 1 * xy2.y;
     return xy2; 
 
 }
