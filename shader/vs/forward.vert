@@ -18,6 +18,7 @@
 #define CANTERS2_ID 38426587.
 #define CYLINDRICAL_EQUAL_AREA_ID -1.
 #define MIXPROJECTION -9999.0
+#define DOUBLE_PROJECTION_ID 2017.
 
 // ID of the current projection
 uniform float projectionID;
@@ -27,6 +28,15 @@ uniform float projectionID;
 uniform float mix1ProjectionID;
 uniform float mix2ProjectionID;
 uniform float mixWeight;
+
+//doubleproj
+uniform float proj_a_ID;
+uniform float proj_b_ID;
+uniform float weight;
+uniform float m00;
+uniform float m01;
+uniform float m10;
+uniform float m11;
 
 // parameters for spherical rotation
 uniform float sinLatPole;
@@ -297,7 +307,33 @@ vec2 projectionMix(in vec2 lonLat) {
     // mix computes: xy2⋅(1−mixWeight)+xy1⋅mixWeight
     return mix(xy2, xy1, mixWeight);
 }
- 
+
+vec2 doubleProjection(in vec2 lonlat) {
+    /* something funky going on with the weight
+       type conversion error? */
+    
+    // proj_a.forward(lon, lat, xy);
+    vec2 xy1 = project(lonlat, proj_a_ID);
+    
+    // xy[0] *= w; xy[1] *= w;
+    xy1.x *= weight;
+    xy1.y *= weight;
+
+    // proj_a.inverse(xy[0], xy[1], lonlat);
+	// proj_b.forward(lonlat[0], lonlat[1], xy);
+    vec2 lonlat1 = invProjection(xy1, proj_a_ID);
+    vec2 xy2 = project(lonlat1, proj_b_ID);
+
+    
+    xy2.x *= 1./weight;
+    xy2.y *= 1./weight;
+    xy2.x = m00 * xy2.x + m01 * xy2.y;
+    xy2.x *= 2.;
+    xy2.y = m10 * xy2.x + m11 * xy2.y;
+    return xy2; 
+
+}
+
 void main(void) {
 	vec2 xy, lonLatTransformed;
     
@@ -343,7 +379,10 @@ void main(void) {
         alongAntimeridian = 1. - step(d, PI - abs(lonLatTransformed.x));
         
         // project the unrotated position
-    	if (projectionID == MIXPROJECTION) {
+    	vec2 lonLat;
+        if (projectionID == DOUBLE_PROJECTION_ID) {
+            xy = doubleProjection(lonLat);
+        } else if (projectionID == MIXPROJECTION) {
     		xy = projectionMix(lonLat);
     	} else {
     		xy = project(lonLat, projectionID);
