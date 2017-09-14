@@ -297,7 +297,7 @@ vec2 projectionMix(in vec2 lonLat) {
     // mix computes: xy2⋅(1−mixWeight)+xy1⋅mixWeight
     return mix(xy2, xy1, mixWeight);
 }
-
+ 
 void main(void) {
 	vec2 xy, lonLatTransformed;
     
