@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 /* Build Time: September 14, 2017 02:51:55 PM */
+=======
+/* Build Time: September 13, 2017 07:49:06 PM */
+>>>>>>> 4f596102f2aedf40b7758c8b9a548aeffd785480
 /*globals LambertCylindricalEqualArea, ProjectionFactory */
 function MapEvents(map) {"use strict";
 
@@ -7406,9 +7410,15 @@ ProjectionFactory.create = function(conf) {
         //     // Use a weight for a smooth transition from the transformed to the regular Lambert azimuthal projection
         //     projection.transformToLambertAzimuthal(w);
         // } else {
+<<<<<<< HEAD
         // //     // small scale projection is not a transformed Lambert azimuthal
         // //     // create a blend between the small-scale projection and the Lambert azimuthal (via a modified Hammer)
             //p1 = ProjectionFactory.getSmallScaleProjection(conf.smallScaleProjectionName);
+=======
+        //     // small scale projection is not a transformed Lambert azimuthal
+        //     // create a blend between the small-scale projection and the Lambert azimuthal (via a modified Hammer)
+            p1 = ProjectionFactory.getSmallScaleProjection(conf.smallScaleProjectionName);
+>>>>>>> 4f596102f2aedf40b7758c8b9a548aeffd785480
             // TODO use a transformed Lambert with a pole line when the world projection has a pole line?
             p1 = TransformedLambertAzimuthal.Hammer();
             p2 = new LambertAzimuthalEqualAreaOblique();
@@ -8939,5 +8949,9 @@ ShpError.ERROR_UNDEFINED = 0;
 // a 'no data' error is thrown when the byte array runs out of data.
 ShpError.ERROR_NODATA = 1;
 
+<<<<<<< HEAD
 var adaptiveCompositeMapBuildTimeStamp = "September 14, 2017 02:51:55 PM";
+=======
+var adaptiveCompositeMapBuildTimeStamp = "September 13, 2017 07:49:06 PM";
+>>>>>>> 4f596102f2aedf40b7758c8b9a548aeffd785480
 		

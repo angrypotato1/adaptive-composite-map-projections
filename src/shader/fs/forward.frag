@@ -45,10 +45,13 @@ uniform float mixWeight;
 uniform float proj_a_ID;
 uniform float proj_b_ID;
 uniform float weight;
+<<<<<<< HEAD
 uniform float m00;
 uniform float m01;
 uniform float m10;
 uniform float m11;
+=======
+>>>>>>> 4f596102f2aedf40b7758c8b9a548aeffd785480
 
 uniform sampler2D texture;
 varying vec2 textureCoord;
@@ -586,18 +589,29 @@ vec2 invDoubleProjection(in vec2 lonlat) {
     // xy[0] *= w; xy[1] *= w;
     xy1.x *= weight;
     xy1.y *= weight;
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 4f596102f2aedf40b7758c8b9a548aeffd785480
     // proj_a.inverse(xy[0], xy[1], lonlat);
 	// proj_b.forward(lonlat[0], lonlat[1], xy);
     vec2 lonlat1 = invProjection(xy1, proj_a_ID);
     vec2 xy2 = project(lonlat1, proj_b_ID);
 
+<<<<<<< HEAD
     
     xy2.x *= 1./weight;
     xy2.y *= 1./weight;
     xy2.x = m00 * xy2.x + m01 * xy2.y;
     xy2.x *= 2.;
     xy2.y = m10 * xy2.x + m11 * xy2.y;
+=======
+    xy2.x *= newWeight;
+    xy2.y *= 1/weight;
+    xy2.x = 1 * xy2.x + 0 * xy2.y;
+    xy2.y = 0 * xy2.x + 1 * xy2.y;
+>>>>>>> 4f596102f2aedf40b7758c8b9a548aeffd785480
     return xy2; 
 
 }

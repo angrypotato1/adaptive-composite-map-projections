@@ -293,9 +293,15 @@ ProjectionFactory.create = function(conf) {
         //     // Use a weight for a smooth transition from the transformed to the regular Lambert azimuthal projection
         //     projection.transformToLambertAzimuthal(w);
         // } else {
+<<<<<<< HEAD
         // //     // small scale projection is not a transformed Lambert azimuthal
         // //     // create a blend between the small-scale projection and the Lambert azimuthal (via a modified Hammer)
             //p1 = ProjectionFactory.getSmallScaleProjection(conf.smallScaleProjectionName);
+=======
+        //     // small scale projection is not a transformed Lambert azimuthal
+        //     // create a blend between the small-scale projection and the Lambert azimuthal (via a modified Hammer)
+            p1 = ProjectionFactory.getSmallScaleProjection(conf.smallScaleProjectionName);
+>>>>>>> 4f596102f2aedf40b7758c8b9a548aeffd785480
             // TODO use a transformed Lambert with a pole line when the world projection has a pole line?
             p1 = TransformedLambertAzimuthal.Hammer();
             p2 = new LambertAzimuthalEqualAreaOblique();
