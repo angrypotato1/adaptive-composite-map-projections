@@ -16,7 +16,7 @@ precision mediump float;
 #define EPSG_GEOGRAPHIC 4979.
 #define EPSG_SINUSOIDAL 54008.
 #define LAMBERT_CYLINDRICAL_TRANSVERSE_ID -9834.
-#define TRANSFORMED_LAMBERT_AZIMUTHAL_TRANSVERSE_ID -777.
+
 #define ALBERS_ID 11.
 #define TRANSFORMED_LAMBERT_AZIMUTHAL_ID 654267985.
 #define NATURAL_EARTH_ID 7259365.
@@ -24,12 +24,6 @@ precision mediump float;
 #define CANTERS2_ID 38426587.
 #define CYLINDRICAL_EQUAL_AREA_ID -1.
 #define MIXPROJECTION -9999.0
-#define DOUBLE_PROJECTION_ID 2017.
-
-//doubleproj
-uniform float proj_a_ID;
-uniform float proj_b_ID;
-uniform float weight;
 
 // FIXME should be int
 uniform float projectionID;
@@ -418,29 +412,6 @@ vec2 invLambertAzimuthalSouthPolar(in vec2 xy) {
     return vec2 (lon, lat);
 }
 
-vec2 invTransformedLambertAzimuthalTransverse(in vec2 xy) {
-    // inverse transformed Lambert azimuthal
-    xy.x /=  wagnerCB;
-    xy.y /= -wagnerCA;
-    float z = sqrt(1. - 0.25 * (dot(xy, xy)));
-    float lon = atan(z * xy.y, 2. * z * z - 1.) / wagnerN;
-    float sinLat = z * xy.x / wagnerM;
-    float cosLat = sqrt(1. - sinLat * sinLat);
-    
-    // inverse transverse rotation
-    float cosLon = cos(lon);
-    // Synder 1987 Map Projections - A working manual, eq. 5-10b with alpha = 0
-    lon = atan(cosLat * sin(lon), -sinLat);
-    // Synder 1987 Map Projections - A working manual, eq. 5-9 with alpha = 0
-    sinLat = cosLat * cosLon;
-    return vec2 (lon - PI / 2., asin(sinLat));
-}
-
-vec2 invLambertCylindricalTransverse(in vec2 xy) {
-    float r = sqrt(1. - xy.x * xy.x);
-    return vec2(atan(xy.x, (r * cos(xy.y))), asin(r * sin(xy.y)));
-}
-
 vec2 invAlbersConic(in vec2 xy) {
     xy.y = albersRho0 - xy.y;
     float rho = length(xy);
@@ -502,32 +473,28 @@ vec2 invProjection(in vec2 xy, in float projectionID) {
 	}
 	
     // continental scale projection
-    if (projectionID == 28.){
-	return invLambertAzimuthalNorthPolar(xy);
-    }
+	if (projectionID == 28.){
+		return invLambertAzimuthalNorthPolar(xy);
+	}
 	
-    // continental and regional scale projections
-    if (projectionID == ALBERS_ID) {
-	return invAlbersConic(xy);
-    }
+	// continental and regional scale projections
+	if (projectionID == ALBERS_ID) {
+		return invAlbersConic(xy);
+	}
     if (projectionID == -2.) {
-	return invLambertAzimuthalNorthPolar(xy);
-    }
+		return invLambertAzimuthalNorthPolar(xy);
+	}
     if (projectionID == -3.) {
-	return invLambertAzimuthalSouthPolar(xy);
+		return invLambertAzimuthalSouthPolar(xy);
     }
-    if (projectionID == TRANSFORMED_LAMBERT_AZIMUTHAL_TRANSVERSE_ID) {
-        return invTransformedLambertAzimuthalTransverse(xy); 
-    }
-    if (projectionID == LAMBERT_CYLINDRICAL_TRANSVERSE_ID) {
-        return invLambertCylindricalTransverse(xy);
-    }
-
+    
     /*
      if (projectionID == EPSG_MERCATOR) {
      return mercator(lon, lat);
      }
-     
+     if (projectionID == LAMBERT_CYLINDRICAL_TRANSVERSE_ID) {
+     return lambertCylindricalTransverse(lon, lat);
+     }
      */
     
     // FIXME discard;
@@ -580,37 +547,16 @@ vec2 invProjectionMix(in vec2 xy) {
     return vec2(lon, lat);
 }
 
-vec2 invDoubleProjection(in vec2 xy) {
-    /* lookup array definitions GLSL and W issues
-    vec2 lonlat = (0., 0.);
-    
-    xy.x = 1 * xy.x + 0 * xy.y;
-    xy.y = 0 * xy.x + 1 * xy.y;
-
-    xy.x *= weight;
-    xy.y *= weight;
-    
-    vec2 lonlat = invProjection(xy, proj_b_ID);
-    vec2 xy = project(lonlat, proj_b_ID);
-
-    xy.x *= 1/weight;
-    xy.y *= 1/weight;
-
-    vec2 lonlat = invProjection(xy, proj_a_ID); 
-    */
-    return lonlat; 
-}
-
 void main(void) {
     vec2 xy = (gl_FragCoord.xy - dXY) / scaleXY * 2.;
     xy.y -= falseNorthing;
 
     vec2 lonLat;
-	if (projectionID == DOUBLE_PROJECTION_ID) {
-		lonLat = invDoubleProjection(xy);
-	} else {
+//	if (projectionID == MIXPROJECTION) {
+//		lonLat = invProjectionMix(xy);
+//	} else {
 		lonLat = invProjection(xy, projectionID);
-	}
+//	}
     if (cosLatPole != 0.) {
         lonLat = transformSphere(lonLat);
     }

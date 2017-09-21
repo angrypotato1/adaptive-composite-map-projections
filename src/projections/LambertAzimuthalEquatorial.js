@@ -1,41 +1,38 @@
-/*globals GraticuleOutline*/
+/*global GraticuleOutline, NaN*/
 
-function LambertAzimuthalEquatorial() {"use strict";
+function LambertAzimuthalEquatorial() {
+    "use strict";
 
-    var FORTPI = Math.PI / 4, EPS10 = 1.e-10;
+    var EPS10 = 1.e-10;
 
-    this.toString = function() {
+    this.toString = function () {
         return 'Lambert Azimuthal';
     };
 
-    this.isEqualArea = function() {
+    this.isEqualArea = function () {
         return true;
     };
 
-    this.initialize = function(conf) {
+    this.initialize = function (conf) {
     };
 
-    this.forward = function(lon, lat, xy) {
-        var k = 2 * Math.sin(FORTPI - lat * 0.5);
-        xy[0] = k * Math.sin(lon);
-        xy[1] = k * -Math.cos(lon);
-        /*
-        var x, y, sinLat = Math.sin(lat), cosLat = Math.cos(lat), cosLon = Math.cos(lon), sinLon = Math.sin(lon);
-        y = 1 + cosLat * cosLon;
-        if (y < EPS10) {
+    this.forward = function (lon, lat, xy) {
+        var sinLat = Math.sin(lat),
+                cosLat = Math.cos(lat),
+                cosLon = Math.cos(lon),
+                sinLon = Math.sin(lon),
+                k_ = 1 + cosLat * cosLon;
+        if (k_ < EPS10) {
             xy[0] = NaN;
             xy[1] = NaN;
         } else {
-            y = Math.sqrt(2 / y);
-            x = y * cosLat * sinLon;
-            y *= sinLat;
-
-            xy[0] = x;
-            xy[1] = y;
-        }*/
+            k_ = Math.sqrt(2 / k_);
+            xy[0] = k_ * cosLat * sinLon;
+            xy[1] = k_ * sinLat;
+        }
     };
 
-    this.inverse = function(x, y, lonlat) {
+    this.inverse = function (x, y, lonlat) {
         var cosz, rh, sinz, phi;
 
         rh = Math.sqrt(x * x + y * y);
@@ -55,17 +52,17 @@ function LambertAzimuthalEquatorial() {"use strict";
         lonlat[0] = (y === 0) ? 0 : Math.atan2(x, y);
     };
 
-    this.getOutline = function() {
+    this.getOutline = function () {
         return GraticuleOutline.circularOutline(2);
     };
 
-    this.getShaderUniforms = function() {
+    this.getShaderUniforms = function () {
         return {
-            "projectionID" : this.getID()
+            "projectionID": this.getID()
         };
     };
 
-    this.getID = function() {
+    this.getID = function () {
         return 28;
     };
 }

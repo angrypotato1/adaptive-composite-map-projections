@@ -22,6 +22,7 @@ function LambertAzimuthalEqualAreaOblique() {"use strict";
         sinLat0 = Math.sin(lat0);
     };
 
+    // forward for oblique Lambert azimuthal after Snyder 1987 Map Projections - A working manual, p. 185
     this.forward = function(lon, lat, xy) {
         var sinLat = Math.sin(lat);
         var cosLat = Math.cos(lat);

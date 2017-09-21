@@ -29,7 +29,7 @@ precision mediump float;
 #define CANTERS2_ID 38426587.
 #define CYLINDRICAL_EQUAL_AREA_ID -1.
 #define MIXPROJECTION -9999.0
-#define DOUBLE_PROJECTION_ID 2017.
+#define DOUBLE_PROJECTION_ID 2017.0
 
 // FIXME should be int
 uniform float projectionID;
@@ -577,28 +577,17 @@ vec2 invProjectionMix(in vec2 xy) {
 
 
 vec2 invDoubleProjection(in vec2 lonlat) {
-    /* something funky going on with the weight
-       type conversion error? */
-    
-    // proj_a.forward(lon, lat, xy);
-    vec2 xy1 = project(lonlat, proj_a_ID);
-    
-    // xy[0] *= w; xy[1] *= w;
+    /*vec2 xy1 = project(lonlat, proj_a_ID);
     xy1.x *= weight;
     xy1.y *= weight;
-    // proj_a.inverse(xy[0], xy[1], lonlat);
-	// proj_b.forward(lonlat[0], lonlat[1], xy);
     vec2 lonlat1 = invProjection(xy1, proj_a_ID);
-    vec2 xy2 = project(lonlat1, proj_b_ID);
-
-    
+    vec2 xy2 = project(lonlat1, proj_b_ID);  
     xy2.x *= 1./weight;
     xy2.y *= 1./weight;
     xy2.x = m00 * xy2.x + m01 * xy2.y;
-    xy2.x *= 2.;
     xy2.y = m10 * xy2.x + m11 * xy2.y;
-    return xy2; 
-
+    return xy2;*/
+    return lonlat; 
 }
 
 void main(void) {

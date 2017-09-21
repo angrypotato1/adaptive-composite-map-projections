@@ -1,4 +1,8 @@
+// FIXME this vertex shader code contains a series of commented discard statements
+
+#define EPS 1e-7
 #define PI 3.14159265358979323846
+#define HALFPI (3.14159265358979323846 / 2.)
 #define WEB_MERCATOR_MAX_LAT 1.4844222297453322
 #define M_1_PI 0.31830988618379067154
 
@@ -11,6 +15,7 @@
 #define ALBERS_ID 11.
 #define LAMBERT_AZIMUTHAL_NORTH_POLAR_ID -2.
 #define LAMBERT_AZIMUTHAL_SOUTH_POLAR_ID -3.
+#define LAMBERT_AZIMUTHAL_EQUATORIAL_ID 28.
 #define TRANSFORMED_LAMBERT_AZIMUTHAL_ID 654267985.
 #define TRANSFORMED_LAMBERT_AZIMUTHAL_TRANSVERSE_ID = -777.
 #define NATURAL_EARTH_ID 7259365.
@@ -18,7 +23,7 @@
 #define CANTERS2_ID 38426587.
 #define CYLINDRICAL_EQUAL_AREA_ID -1.
 #define MIXPROJECTION -9999.0
-#define DOUBLE_PROJECTION_ID 2017.
+#define DOUBLE_PROJECTION_ID 2017.0
 
 // ID of the current projection
 uniform float projectionID;
@@ -221,6 +226,17 @@ vec2 lambertAzimuthalSouthPolar(in vec2 lonLat) {
 	return k * vec2(sin(lon), cos(lon));
 }
 
+vec2 lambertAzimuthalEquatorial(in vec2 lonLat) {
+        float sinLat = sin(lonLat.y);
+        float cosLat = cos(lonLat.y);
+        float cosLon = cos(lonLat.x);
+        float sinLon = sin(lonLat.x);
+        float k_ = sqrt(2. / (1. + cosLat * cosLon));
+        float x = k_ * cosLat * sinLon;
+        float y = k_ * sinLat;
+        return vec2(x, y);
+}
+
 vec2 mercator(in vec2 lonLat) {
 	float lon = lonLat.x;
 	float lat = lonLat.y;
@@ -264,10 +280,290 @@ vec2 transformedLambertAzimuthalTransverse(in vec2 lonLat) {
 	return vec2(x, y);
 }
 
+vec2 invGeographic(in vec2 xy) {
+    if (any(greaterThan(abs(xy), vec2(PI, HALFPI)))) {
+    //    discard;
+    }
+    return xy;
+}
+
+vec2 invSinusoidal(in vec2 xy) {
+    vec2 lonLat = vec2(xy.x / cos(xy.y), xy.y);
+    if (any(greaterThan(abs(xy), vec2(PI, HALFPI)))) {
+        //discard;
+    }
+    return lonLat;
+}
+
+// Canters, F. (2002) Small-scale Map projection Design. p. 218-219.
+// Modified Sinusoidal, equal-area.
+vec2 invCanters1(in vec2 xy) {
+    const int MAX_ITERATIONS = 20;
+    vec2 dxy;
+    vec2 lonLat = vec2(0);
+    for (int i = 0; i < MAX_ITERATIONS; i++) {
+        // difference in projected coordinates
+        dxy = xy - canters1(lonLat).xy;
+        // add half of the horizontal and vertical difference to the longitude and the latitude
+        lonLat += dxy * 0.5;
+        // to guarantee stable forward projection, latitude must not go beyond +/-PI/2
+        clamp(lonLat, vec2(-PI, -HALFPI), vec2(PI, HALFPI));
+        // stop when difference is small enough
+        if (all(lessThan(abs(dxy), vec2(EPS)))) {
+            break;
+        }
+    }
+    return lonLat;
+}
+
+// Canters, F. (2002) Small-scale Map projection Design. p. 218-219.
+// Modified Sinusoidal, equal-area.
+vec2 invCanters2(in vec2 xy) {
+    const int MAX_ITERATIONS = 20;
+    vec2 dxy;
+    vec2 lonLat = vec2(0);
+    for (int i = 0; i < MAX_ITERATIONS; i++) {
+        // difference in projected coordinates
+        dxy = xy - canters2(lonLat).xy;
+        // add half of the horizontal and vertical difference to the longitude and the latitude
+        lonLat += dxy * 0.5;
+        // to guarantee stable forward projection, latitude must not go beyond +/-PI/2
+        clamp(lonLat, vec2(-PI, -HALFPI), vec2(PI, HALFPI));
+        // stop when difference is small enough
+        if (all(lessThan(abs(dxy), vec2(EPS)))) {
+            break;
+        }
+    }
+    return lonLat;
+}
+
+vec2 invTransformedWagner(in vec2 xy) {
+    // FIXME uniforms wagnerCA and wagnerCB should be vec2
+    xy /= vec2(wagnerCA, wagnerCB);
+    
+    float l = dot(xy, xy); // x * x + y * y
+    if (l > 4.) {
+        //discard;
+    }
+    // if x * x + y * y equals 4, the point is on the bounding circle of the
+    // Lambert azimuthal (the limiting case). This should never happen, as
+    // inverseLambertAzimuthal() should be used in this case . If it does happen,
+    // z is NaN and the following computations will return NaN coordinates.
+    float z = sqrt(1. - 0.25 * l);
+    float sinLat = z * xy.y / wagnerM;
+    if (sinLat < -1. || sinLat > 1.) {
+       // discard;
+    }
+    float zz2_1 = 2. * z * z - 1.;
+    xy *= z;
+    float lon = atan(xy.x, zz2_1) / wagnerN;
+    if (lon > PI || lon < -PI) {
+       // discard;
+    }
+    
+    float lat = asin(xy.y / wagnerM);
+    return vec2 (lon, lat);
+}
+
+vec2 invNaturalEarth(in vec2 xy){
+    const float MAX_Y = 0.8707 * 0.52 * PI;
+    const int MAX_ITERATIONS = 20;
+    float yc, tol, y2, y4, f, fder, lon;
+    
+    if (xy.y > MAX_Y || xy.y < -MAX_Y) {
+       // discard;
+    }
+    
+    // Newton's method for the latitude
+    yc = xy.y;
+    for (int i = 0; i < MAX_ITERATIONS; i++) {
+        y2 = yc * yc;
+        y4 = y2 * y2;
+        f = (yc * (1.007226 + y2 * (0.015085 + y4 * (-0.044475 + 0.028874 * y2 - 0.005916 * y4)))) - xy.y;
+        fder = 1.007226 + y2 * (0.015085 * 3. + y4 * (-0.044475 * 7. + 0.028874 * 9. * y2 - 0.005916 * 11. * y4));
+        yc -= tol = f / fder;
+        if (abs(tol) < EPS) {
+            break;
+        }
+    }
+    
+    // longitude
+    y2 = yc * yc;
+    lon = xy.x / (0.8707 + y2 * (-0.131979 + y2 * (-0.013791 + y2 * y2 * y2 * (0.003971 - 0.001529 * y2))));
+    if (lon > PI || lon < -PI) {
+        //discard;
+    }
+    return vec2(lon, yc);
+}
+
+vec2 invRobinson(in vec2 xy){
+    
+    const float MAX_Y = 1.38615911291;
+    const int MAX_ITERATIONS = 20;
+    float yc, tol, y2, y4, f, fder, lon;
+    
+    if (xy.y > MAX_Y || xy.y < -MAX_Y) {
+        //discard;
+    }
+    
+    // compute latitude with Newton's method
+    yc = xy.y;
+    for (int i = 0; i < MAX_ITERATIONS; i++) {
+        y2 = yc * yc;
+        f = (yc * (0.9642 - y2 * (0.0013 + y2 * 0.0129))) - xy.y;
+        fder = 0.9642 - y2 * (0.0013 * 3. + y2 * 0.0129 * 5.);
+        yc -= tol = f / fder;
+        if (abs(tol) < EPS) {
+            break;
+        }
+    }
+    
+    // longitude
+    y2 = yc * yc;
+    lon = xy.x / (0.8507 - y2 * (0.1450 + y2 * 0.0104));
+    if (lon > PI || lon < -PI) {
+        //discard;
+    }
+    return vec2(lon, yc);
+}
+
+vec2 invLambertAzimuthalNorthPolar(in vec2 xy) {
+    float d = length(xy);
+    if (d > 2.) {
+        //discard;
+    }
+    float lon = atan(xy.x, -xy.y);
+    float lat = - 2. * asin(d / 2.) + PI / 2.;
+    return vec2 (lon, lat);
+}
+
+vec2 invLambertAzimuthalSouthPolar(in vec2 xy) {
+    float d = length(xy);
+    if (d > 2.) {
+        //discard;
+    }
+    float lon = atan(xy.x, xy.y);
+    float lat = 2. * asin(d / 2.) - PI / 2.;
+    return vec2 (lon, lat);
+}
+
+vec2 invTransformedLambertAzimuthalTransverse(in vec2 xy) {
+    // inverse transformed Lambert azimuthal
+    xy.x /=  wagnerCB;
+    xy.y /= -wagnerCA;
+    float z = sqrt(1. - 0.25 * (dot(xy, xy)));
+    float lon = atan(z * xy.y, 2. * z * z - 1.) / wagnerN;
+    float sinLat = z * xy.x / wagnerM;
+    float cosLat = sqrt(1. - sinLat * sinLat);
+    
+    // inverse transverse rotation
+    float cosLon = cos(lon);
+    // Synder 1987 Map Projections - A working manual, eq. 5-10b with alpha = 0
+    lon = atan(cosLat * sin(lon), -sinLat);
+    // Synder 1987 Map Projections - A working manual, eq. 5-9 with alpha = 0
+    sinLat = cosLat * cosLon;
+    return vec2 (lon - PI / 2., asin(sinLat));
+}
+
+vec2 invLambertCylindricalTransverse(in vec2 xy) {
+    float r = sqrt(1. - xy.x * xy.x);
+    return vec2(atan(xy.x, (r * cos(xy.y))), asin(r * sin(xy.y)));
+}
+
+vec2 invAlbersConic(in vec2 xy) {
+    xy.y = albersRho0 - xy.y;
+    float rho = length(xy);
+    if (rho == 0.) {
+        return vec2(0., albersN > 0. ? PI / 2. : -PI / 2.);
+    }
+    float lon, lat;
+    float phi = rho * albersN;
+    phi = (albersC - phi * phi) / (albersN * 2.);
+    if (abs(phi) > 1.) {
+        //discard;
+    }
+    lat = asin(phi);
+    
+    if (albersN < 0.) {
+        lon = atan(-xy.x, -xy.y) / albersN;
+    } else {
+        lon = atan(xy.x, xy.y) / albersN;
+    }
+    if (lon > PI || lon < -PI) {
+        //discard;
+    }
+    return vec2(lon, lat);
+}
+
+vec2 invCylindricalEqualArea(in vec2 xy) {
+    if (any(greaterThan(abs(xy), vec2(PI, HALFPI)))) {
+        //discard;
+    }
+    return vec2(xy.x, asin(xy.y));
+}
+
+vec2 invMercator(in vec2 xy) {
+    if (xy.x > PI || xy.x < -PI) {
+        //discard;
+    }
+    return vec2(xy.x, HALFPI - 2. * atan(exp(-xy.y)));
+}
+
+vec2 invProjection(in vec2 xy, in float projectionID) {
+    
+    // world map projections
+    
+    if (projectionID == TRANSFORMED_LAMBERT_AZIMUTHAL_ID) {
+        return invTransformedWagner(xy);
+    }
+    if (projectionID == EPSG_ROBINSON) {
+        return invRobinson(xy);
+    }
+    if (projectionID == NATURAL_EARTH_ID) {
+        return invNaturalEarth(xy);
+    }
+    if (projectionID == EPSG_GEOGRAPHIC) {
+        return invGeographic(xy);
+    }
+    if (projectionID == EPSG_SINUSOIDAL) {
+        return invSinusoidal(xy);
+    }
+    if (projectionID == CANTERS1_ID) {
+        return invCanters1(xy);
+    }
+    if (projectionID == CANTERS2_ID) {
+        return invCanters2(xy);
+    }
+    if (projectionID == CYLINDRICAL_EQUAL_AREA_ID) {
+        return invCylindricalEqualArea(xy);
+    }
+    
+    // continental and regional scale projections
+    if (projectionID == ALBERS_ID) {
+        return invAlbersConic(xy);
+    }
+    if (projectionID == LAMBERT_AZIMUTHAL_NORTH_POLAR_ID) {
+        return invLambertAzimuthalNorthPolar(xy);
+    }
+    if (projectionID == LAMBERT_AZIMUTHAL_SOUTH_POLAR_ID) {
+        return invLambertAzimuthalSouthPolar(xy);
+    }
+    /*
+    if (projectionID == TRANSFORMED_LAMBERT_AZIMUTHAL_TRANSVERSE_ID){
+        return invTransformedLambertAzimuthalTransverse(xy);
+    }
+    if (projectionID == EPSG_LAMBERT_CYLINDRICAL_TRANSVERSE) {
+        return invLambertCylindricalTransverse(xy);
+    }
+    */
+    //if (projectionID == EPSG_MERCATOR) {
+    //return invMercator(xy);
+}
+
 vec2 project(in vec2 lonLat, in float projectionID) {
-	// world map projections
-	if (projectionID == TRANSFORMED_LAMBERT_AZIMUTHAL_ID) {
-		return transformedWagner(lonLat);
+    // world map projections
+    if (projectionID == TRANSFORMED_LAMBERT_AZIMUTHAL_ID) {
+	return transformedWagner(lonLat);
     } else if (projectionID == EPSG_ROBINSON) {
         return robinson(lonLat);
     } else if (projectionID == NATURAL_EARTH_ID) {
@@ -283,55 +579,44 @@ vec2 project(in vec2 lonLat, in float projectionID) {
     } else if (projectionID == CYLINDRICAL_EQUAL_AREA_ID) {
         return cylindricalEqualArea(lonLat);
     }
-	// continental and regional scale projections
-	else if (projectionID == ALBERS_ID) {
-		return albersConic(lonLat);
+    
+    // continental and regional scale projections
+    else if (projectionID == ALBERS_ID) {
+	return albersConic(lonLat);
     } else if (projectionID == LAMBERT_AZIMUTHAL_NORTH_POLAR_ID) {
         return lambertAzimuthalNorthPolar(lonLat);
     } else if (projectionID == LAMBERT_AZIMUTHAL_SOUTH_POLAR_ID) {
         return lambertAzimuthalSouthPolar(lonLat);
+    } else if (projectionID == LAMBERT_AZIMUTHAL_EQUATORIAL_ID) {
+        return lambertAzimuthalEquatorial(lonLat);
     } else if (projectionID == EPSG_MERCATOR) {
         return mercator(lonLat);
-	} else if (projectionID == LAMBERT_CYLINDRICAL_TRANSVERSE_ID) {
-		return lambertCylindricalTransverse(lonLat);
-	} else /* TRANSFORMED_LAMBERT_AZIMUTHAL_TRANSVERSE_ID */{
-		return transformedLambertAzimuthalTransverse(lonLat);
-	}
+    } else if (projectionID == LAMBERT_CYLINDRICAL_TRANSVERSE_ID) {
+	return lambertCylindricalTransverse(lonLat);
+    } else /* TRANSFORMED_LAMBERT_AZIMUTHAL_TRANSVERSE_ID */{
+	return transformedLambertAzimuthalTransverse(lonLat);
+    }
 }
 
 vec2 projectionMix(in vec2 lonLat) {
-	vec2 xy1 = project(lonLat, mix1ProjectionID);
-	xy1.y += falseNorthing;
-	vec2 xy2 = project(lonLat, mix2ProjectionID);
-	xy2.y += falseNorthing2;
+    vec2 xy1 = project(lonLat, mix1ProjectionID);
+    xy1.y += falseNorthing;
+    vec2 xy2 = project(lonLat, mix2ProjectionID);
+    xy2.y += falseNorthing2;
     // mix computes: xy2⋅(1−mixWeight)+xy1⋅mixWeight
     return mix(xy2, xy1, mixWeight);
 }
 
 vec2 doubleProjection(in vec2 lonlat) {
-    /* something funky going on with the weight
-       type conversion error? */
-    
-    // proj_a.forward(lon, lat, xy);
     vec2 xy1 = project(lonlat, proj_a_ID);
-    
-    // xy[0] *= w; xy[1] *= w;
-    xy1.x *= weight;
-    xy1.y *= weight;
-
-    // proj_a.inverse(xy[0], xy[1], lonlat);
-	// proj_b.forward(lonlat[0], lonlat[1], xy);
+    xy1 *= weight;
     vec2 lonlat1 = invProjection(xy1, proj_a_ID);
     vec2 xy2 = project(lonlat1, proj_b_ID);
-
-    
-    xy2.x *= 1./weight;
-    xy2.y *= 1./weight;
+    xy2 /= weight;
     xy2.x = m00 * xy2.x + m01 * xy2.y;
-    xy2.x *= 2.;
     xy2.y = m10 * xy2.x + m11 * xy2.y;
-    return xy2; 
-
+    return xy2;
+    //return project(lonlat, proj_b_ID);
 }
 
 void main(void) {
@@ -379,10 +664,9 @@ void main(void) {
         alongAntimeridian = 1. - step(d, PI - abs(lonLatTransformed.x));
         
         // project the unrotated position
-    	vec2 lonLat;
-        if (projectionID == DOUBLE_PROJECTION_ID) {
-            xy = doubleProjection(lonLat);
-        } else if (projectionID == MIXPROJECTION) {
+    	if (projectionID == DOUBLE_PROJECTION_ID) {
+    		xy = doubleProjection(lonLat);
+    	} else if (projectionID == MIXPROJECTION) {
     		xy = projectionMix(lonLat);
     	} else {
     		xy = project(lonLat, projectionID);

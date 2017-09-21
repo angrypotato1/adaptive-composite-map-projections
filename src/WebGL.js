@@ -178,20 +178,34 @@ WebGL.setDefaultUniforms = function (gl, program) {
     gl.uniform1f(gl.getUniformLocation(program, 'mix1ProjectionID'), 0);
     gl.uniform1f(gl.getUniformLocation(program, 'mix2ProjectionID'), 0);
     gl.uniform1f(gl.getUniformLocation(program, 'mixWeight'), 0);
-
+    
+    // double projection
+    gl.uniform1f(gl.getUniformLocation(program, 'proj_a_ID'), 0);
+    gl.uniform1f(gl.getUniformLocation(program, 'proj_b_ID'), 0);
+    gl.uniform1f(gl.getUniformLocation(program, 'weight'), 0);
+    gl.uniform1f(gl.getUniformLocation(program, 'm00'), 0);
+    gl.uniform1f(gl.getUniformLocation(program, 'm01'), 0);
+    gl.uniform1f(gl.getUniformLocation(program, 'm10'), 0);
+    gl.uniform1f(gl.getUniformLocation(program, 'm11'), 0);
+    
+    // spherical rotation
     gl.uniform1f(gl.getUniformLocation(program, 'sinLatPole'), 1);
     gl.uniform1f(gl.getUniformLocation(program, 'cosLatPole'), 0);
 
+    // central meridian
     gl.uniform1f(gl.getUniformLocation(program, 'meridian'), 0);
 
+    // false northing (shift in vertical direction)
     gl.uniform1f(gl.getUniformLocation(program, 'falseNorthing'), 0);
     gl.uniform1f(gl.getUniformLocation(program, 'falseNorthing2'), 0);
 
+    // Wagner transformation
     gl.uniform1f(gl.getUniformLocation(program, 'wagnerM'), 0);
     gl.uniform1f(gl.getUniformLocation(program, 'wagnerN'), 0);
     gl.uniform1f(gl.getUniformLocation(program, 'wagnerCA'), 0);
     gl.uniform1f(gl.getUniformLocation(program, 'wagnerCB'), 0);
 
+    // Albers conic
     gl.uniform1f(gl.getUniformLocation(program, 'albersN'), 0);
     gl.uniform1f(gl.getUniformLocation(program, 'albersC'), 0);
     gl.uniform1f(gl.getUniformLocation(program, 'albersRho0'), 0);

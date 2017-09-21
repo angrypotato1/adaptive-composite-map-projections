@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-/* Build Time: September 14, 2017 02:51:55 PM */
-=======
-/* Build Time: September 13, 2017 07:49:06 PM */
->>>>>>> 4f596102f2aedf40b7758c8b9a548aeffd785480
+/* Build Time: September 21, 2017 11:16:34 AM */
 /*globals LambertCylindricalEqualArea, ProjectionFactory */
 function MapEvents(map) {"use strict";
 
@@ -1247,20 +1243,34 @@ WebGL.setDefaultUniforms = function (gl, program) {
     gl.uniform1f(gl.getUniformLocation(program, 'mix1ProjectionID'), 0);
     gl.uniform1f(gl.getUniformLocation(program, 'mix2ProjectionID'), 0);
     gl.uniform1f(gl.getUniformLocation(program, 'mixWeight'), 0);
-
+    
+    // double projection
+    gl.uniform1f(gl.getUniformLocation(program, 'proj_a_ID'), 0);
+    gl.uniform1f(gl.getUniformLocation(program, 'proj_b_ID'), 0);
+    gl.uniform1f(gl.getUniformLocation(program, 'weight'), 0);
+    gl.uniform1f(gl.getUniformLocation(program, 'm00'), 0);
+    gl.uniform1f(gl.getUniformLocation(program, 'm01'), 0);
+    gl.uniform1f(gl.getUniformLocation(program, 'm10'), 0);
+    gl.uniform1f(gl.getUniformLocation(program, 'm11'), 0);
+    
+    // spherical rotation
     gl.uniform1f(gl.getUniformLocation(program, 'sinLatPole'), 1);
     gl.uniform1f(gl.getUniformLocation(program, 'cosLatPole'), 0);
 
+    // central meridian
     gl.uniform1f(gl.getUniformLocation(program, 'meridian'), 0);
 
+    // false northing (shift in vertical direction)
     gl.uniform1f(gl.getUniformLocation(program, 'falseNorthing'), 0);
     gl.uniform1f(gl.getUniformLocation(program, 'falseNorthing2'), 0);
 
+    // Wagner transformation
     gl.uniform1f(gl.getUniformLocation(program, 'wagnerM'), 0);
     gl.uniform1f(gl.getUniformLocation(program, 'wagnerN'), 0);
     gl.uniform1f(gl.getUniformLocation(program, 'wagnerCA'), 0);
     gl.uniform1f(gl.getUniformLocation(program, 'wagnerCB'), 0);
 
+    // Albers conic
     gl.uniform1f(gl.getUniformLocation(program, 'albersN'), 0);
     gl.uniform1f(gl.getUniformLocation(program, 'albersC'), 0);
     gl.uniform1f(gl.getUniformLocation(program, 'albersRho0'), 0);
@@ -6084,199 +6094,201 @@ function Canters2() {"use strict";
 	};
 
 }
-function DoubleProjection(a, b) {"use strict";
-var proj_a = a;
-var proj_b = b;
-var m, minv, w;  //scale factor
-var P = [0,0];
+function DoubleProjection(a, b) {
+    "use strict";
+    var proj_a = a;
+    var proj_b = b;
+    var m, minv, w;  //scale factor
+    var P = [0, 0];
 
-var matrixMult = function(M1, M2){
-	return [[M1[0][0]*M2[0][0]+M1[0][1]*M2[1][0], M1[0][0]*M2[0][1]+M1[0][1]*M2[1][1]],
-			  [M1[1][0]*M2[0][0]+M1[1][1]*M2[1][0], M1[1][0]*M2[0][1]+M1[1][1]*M2[1][1]]];
-};
+    var matrixMult = function (M1, M2) {
+        return [[M1[0][0] * M2[0][0] + M1[0][1] * M2[1][0], M1[0][0] * M2[0][1] + M1[0][1] * M2[1][1]],
+            [M1[1][0] * M2[0][0] + M1[1][1] * M2[1][0], M1[1][0] * M2[0][1] + M1[1][1] * M2[1][1]]];
+    };
 
-var invMatr = function(M){
-	var detT = (M[0][0]*M[1][1] - M[0][1]*M[1][0]);
-	return [[ M[1][1]/detT, -M[0][1]/detT],
-			[-M[1][0]/detT,  M[0][0]/detT]];
-};
+    var invMatr = function (M) {
+        var detT = (M[0][0] * M[1][1] - M[0][1] * M[1][0]);
+        return [[M[1][1] / detT, -M[0][1] / detT],
+            [-M[1][0] / detT, M[0][0] / detT]];
+    };
 
-//See eq 2.1 in Strebes
-var getTissot = function(proj, lon, lat){
-	var h = 0.000000000001; //level of precision
-	var poslon = [0,0];
-	var neglon = [0,0];
-	var poslat = [0,0];
-	var neglat = [0,0];
-	var seclat = 1/Math.cos(lat);
-	proj.forward(lon+h, lat, poslon);
-	proj.forward(lon-h, lat, neglon);
-	proj.forward(lon, lat+h, poslat);
-	proj.forward(lon, lat-h, neglat);
-	var dxdlon = (poslon[0]-neglon[0])/(2*h);
-	var dxdlat = (poslat[0]-neglat[0])/(2*h);
-	var dydlat = (poslat[1]-neglat[1])/(2*h);
-	var dydlon = (poslon[1]-neglon[1])/(2*h);
-	var J = [[dxdlon, dxdlat],
-			 [dydlon, dydlat]];
-	return matrixMult(J, [[seclat,0],[0,1]]);
-};
+    //See eq 2.1 in Strebe
+    var getTissot = function (proj, lon, lat) {
+        var h = 0.000000000001; //level of precision
+        var poslon = [0, 0];
+        var neglon = [0, 0];
+        var poslat = [0, 0];
+        var neglat = [0, 0];
+        var seclat = 1 / Math.cos(lat);
+        proj.forward(lon + h, lat, poslon);
+        proj.forward(lon - h, lat, neglon);
+        proj.forward(lon, lat + h, poslat);
+        proj.forward(lon, lat - h, neglat);
+        var dxdlon = (poslon[0] - neglon[0]) / (2 * h);
+        var dxdlat = (poslat[0] - neglat[0]) / (2 * h);
+        var dydlat = (poslat[1] - neglat[1]) / (2 * h);
+        var dydlon = (poslon[1] - neglon[1]) / (2 * h);
+        var J = [[dxdlon, dxdlat],
+            [dydlon, dydlat]];
+        return matrixMult(J, [[seclat, 0], [0, 1]]);
+    };
 
 //See Ma and Mb in Strebe's paper
-var matrix = function(T){
-	return [[T[0][0]*w+1-w, T[0][1]*w],
-	[T[1][0]*w, T[1][1]*w+1-w]];
-};
+    var matrix = function (T) {
+        return [[T[0][0] * w + 1 - w, T[0][1] * w],
+            [T[1][0] * w, T[1][1] * w + 1 - w]];
+    };
 
 //Finds area scale factor
-this.getDistortion = function(proj, lon, lat){
-	var h = 1e-7; //level of precision
-	var poslon = [0,0];
-	var neglon = [0,0];
-	var poslat = [0,0];
-	var neglat = [0,0];
-	proj.forward(lon+h, lat, poslon);
-	proj.forward(lon-h, lat, neglon);
-	proj.forward(lon, lat+h, poslat);
-	proj.forward(lon, lat-h, neglat);
-	//Approximate derivatives
-	var dxdlon = (poslon[0]-neglon[0])/(2*h);
-	var dxdlat = (poslat[0]-neglat[0])/(2*h);
-	var dydlat = (poslat[1]-neglat[1])/(2*h);
-	var dydlon = (poslon[1]-neglon[1])/(2*h);
-	return (dxdlon*dydlat - dydlon*dxdlat)/Math.cos(lat);
-};
+    this.getDistortion = function (proj, lon, lat) {
+        var h = 1e-7; //level of precision
+        var poslon = [0, 0];
+        var neglon = [0, 0];
+        var poslat = [0, 0];
+        var neglat = [0, 0];
+        proj.forward(lon + h, lat, poslon);
+        proj.forward(lon - h, lat, neglon);
+        proj.forward(lon, lat + h, poslat);
+        proj.forward(lon, lat - h, neglat);
+        //Approximate derivatives
+        var dxdlon = (poslon[0] - neglon[0]) / (2 * h);
+        var dxdlat = (poslat[0] - neglat[0]) / (2 * h);
+        var dydlat = (poslat[1] - neglat[1]) / (2 * h);
+        var dydlon = (poslon[1] - neglon[1]) / (2 * h);
+        return (dxdlon * dydlat - dydlon * dxdlat) / Math.cos(lat);
+    };
 
 //Given a precision of 0.001 see if there's distortion
-this.testDistortion = function(proj){
-	var distortion = this.getDistortion(proj, P[0], P[1]);
-	return Math.abs(1 - distortion) > 0.001;
-};
+    this.testDistortion = function (proj) {
+        var distortion = this.getDistortion(proj, P[0], P[1]);
+        return Math.abs(1 - distortion) > 0.001;
+    };
 
-this.isEqualArea = function() {
-	return proj_a.isEqualArea() && proj_b.isEqualArea();
-};
+    this.isEqualArea = function () {
+        return proj_a.isEqualArea() && proj_b.isEqualArea();
+    };
 
 //using area scale factor, decide if there is distortion
 // at point P for each projection
-var AP = this.testDistortion(proj_a);
-var BP = this.testDistortion(proj_b);
+    var AP = this.testDistortion(proj_a);
+    var BP = this.testDistortion(proj_b);
 
-var TissotA = getTissot(proj_a, P[0], P[1]);
-var invTissotB = invMatr(getTissot(proj_b, P[0], P[1]));
+    var TissotA = getTissot(proj_a, P[0], P[1]);
+    var invTissotB = invMatr(getTissot(proj_b, P[0], P[1]));
 
-this.setProj = function(a, b){
-	proj_a = a;
-	proj_b = b;
-};
+    this.setProj = function (a, b) {
+        proj_a = a;
+        proj_b = b;
+    };
 
-this.getW = function() {
-	return w;
-};
+    this.getW = function () {
+        return w;
+    };
 
-this.setW = function(new_W) {
-	w = new_W;
-	//check if theres no distortion at point P
-	if (AP && BP){
-		m = matrixMult(matrix(TissotA), matrix(invTissotB));
-		minv = matrixMult(invMatrix(matrix(invTissotB)), invMatrix(matrix(TissotA)));
-	}
-	else if (AP){
-		m = matrix(TissotA);
-		minv = invMatr(m);
-	}
-	else if (BP){
-		m = matrix(invTissotB);
-		minv = invMatrix(m);
+    this.setW = function (new_W) {
+        w = new_W;
+        //check if theres no distortion at point P
+        if (AP && BP) {
+            m = matrixMult(matrix(TissotA), matrix(invTissotB));
+            minv = matrixMult(invMatrix(matrix(invTissotB)), invMatrix(matrix(TissotA)));
+        } else if (AP) {
+            m = matrix(TissotA);
+            minv = invMatr(m);
+        } else if (BP) {
+            m = matrix(invTissotB);
+            minv = invMatrix(m);
 
-	}
-	else{
-		minv = m = [[1,0],[0,1]];
-	}
-};
-this.setW(1);
+        } else {
+            minv = m = [[1, 0], [0, 1]];
+        }
+    };
+    this.setW(1);
 
-this.toString = function() {
-	return proj_a.toString() + "->" + proj_b.toString();
-};
+    this.toString = function () {
+        return proj_a.toString() + "->" + proj_b.toString();
+    };
 
-this.forward = function(lon, lat, xy) {
-	var lonlat = [0,0];
-	proj_a.forward(lon, lat, xy);
-	xy[0] *= w; xy[1] *= w;
-	proj_a.inverse(xy[0], xy[1], lonlat);
-	proj_b.forward(lonlat[0], lonlat[1], xy);
-	xy[0] *= 1/w; xy[1] *= 1/w;
-	xy[0] = m[0][0]*xy[0]+m[0][1]*xy[1];
-	xy[1] = m[1][0]*xy[0]+m[1][1]*xy[1];
-};
+    this.forward = function (lon, lat, xy) {
+        var lonlat = [0, 0];
+        proj_a.forward(lon, lat, xy);
+        xy[0] *= w;
+        xy[1] *= w;
+        proj_a.inverse(xy[0], xy[1], lonlat);
+        proj_b.forward(lonlat[0], lonlat[1], xy);
+        xy[0] *= 1 / w;
+        xy[1] *= 1 / w;
+        xy[0] = m[0][0] * xy[0] + m[0][1] * xy[1];
+        xy[1] = m[1][0] * xy[0] + m[1][1] * xy[1];
+    };
 
-this.inverse = function(x, y, lonlat) {
-	var xy = [0,0];
-	x = minv[0][0]*x+minv[0][1]*y;
-	y = minv[1][0]*x+minv[1][1]*y;
-	x *= w; y *= w;
-	proj_b.inverse(x, y, lonlat);
-	proj_a.forward(lonlat[0], lonlat[1], xy);
-	xy[0] *= 1/w; xy[1] *= 1/w;
-	proj_a.inverse(xy[0], xy[1], lonlat);
-};
+    this.inverse = function (x, y, lonlat) {
+        var xy = [0, 0];
+        x = minv[0][0] * x + minv[0][1] * y;
+        y = minv[1][0] * x + minv[1][1] * y;
+        x *= w;
+        y *= w;
+        proj_b.inverse(x, y, lonlat);
+        proj_a.forward(lonlat[0], lonlat[1], xy);
+        xy[0] *= 1 / w;
+        xy[1] *= 1 / w;
+        proj_a.inverse(xy[0], xy[1], lonlat);
+    };
 
-this.getOutline = function() {
-	// don't use generic outline if one of the weights equals 1, as the outline might be impossible to
-	// model with a generic outline (e.g., azimuthals require a circle)
-	if (w === 1) {
-		return proj_a.getOutline();
-	} 
-	if (w === 1) {
-		return proj_b.getOutline();
-	}
-	return GraticuleOutline.genericOutline(this);
-};
+    this.getOutline = function () {
+        // don't use generic outline if one of the weights equals 1 or 0, as the outline might be impossible to
+        // model with a generic outline (e.g., azimuthals require a circle)
+        if (w === 0) {
+            return proj_a.getOutline();
+        }
+        if (w === 1) {
+            return proj_b.getOutline();
+        }
+        return GraticuleOutline.genericOutline(this);
+    };
 
-// Shader config
-this.getShaderUniforms = function() {
-	var u, uniforms, uniforms1, uniforms2;
-	uniforms = {
-		"projectionID" : 2017,
-		"weight" : w,
-		"proj_a_ID" : proj_a.getID(),
-		"proj_b_ID" : proj_b.getID(),
-		"m00" : m[0][0],
-		"m01" : m[0][1],
-		"m10" : m[1][0],
-		"m11" : m[1][1]
-	};
+    // Shader config
+    this.getShaderUniforms = function () {
+        var u, uniforms, uniforms1, uniforms2;
+        uniforms = {
+            "projectionID": 2017,
+            "weight": w,
+            "proj_a_ID": proj_a.getID(),
+            "proj_b_ID": proj_b.getID(),
+            "m00": m[0][0],
+            "m01": m[0][1],
+            "m10": m[1][0],
+            "m11": m[1][1]
+        };
 
-	uniforms1 = proj_a.getShaderUniforms();
-	uniforms2 = proj_b.getShaderUniforms();
+        uniforms1 = proj_a.getShaderUniforms();
+        uniforms2 = proj_b.getShaderUniforms();
 
-	for (u in uniforms1) {
-		if (uniforms1.hasOwnProperty(u) && !uniforms.hasOwnProperty(u)) {
-			uniforms[u] = uniforms1[u];
-		}
-	}
-	for (u in uniforms2) {
-		if (uniforms2.hasOwnProperty(u) && !uniforms.hasOwnProperty(u)) {
-			uniforms[u] = uniforms2[u];
-		}
-	}
+        for (u in uniforms1) {
+            if (uniforms1.hasOwnProperty(u) && !uniforms.hasOwnProperty(u)) {
+                uniforms[u] = uniforms1[u];
+            }
+        }
+        for (u in uniforms2) {
+            if (uniforms2.hasOwnProperty(u) && !uniforms.hasOwnProperty(u)) {
+                uniforms[u] = uniforms2[u];
+            }
+        }
 
-	uniforms.falseNorthing = uniforms1.falseNorthing === undefined ? 0 : uniforms1.falseNorthing;
-	uniforms.falseNorthing2 = uniforms2.falseNorthing === undefined ? 0 : uniforms2.falseNorthing;
+        uniforms.falseNorthing = uniforms1.falseNorthing === undefined ? 0 : uniforms1.falseNorthing;
+        uniforms.falseNorthing2 = uniforms2.falseNorthing === undefined ? 0 : uniforms2.falseNorthing;
 
-	// // for Lambert Azimuthal Projection
-	// uniforms.sinLatPole = Math.sin(poleLat);
-	// uniforms.cosLatPole = Math.cos(poleLat);
+        // // for Lambert Azimuthal Projection
+        // uniforms.sinLatPole = Math.sin(poleLat);
+        // uniforms.cosLatPole = Math.cos(poleLat);
 
-	return uniforms;
-};
+        return uniforms;
+    };
 
-this.getID = function() {
-	return 2017;
+    this.getID = function () {
+        return 2017;
+    };
+
 }
-
-};
 function Eckert4() {"use strict";
 
 	var C_x = 0.42223820031577120149;
@@ -6425,6 +6437,7 @@ function LambertAzimuthalEqualAreaOblique() {"use strict";
         sinLat0 = Math.sin(lat0);
     };
 
+    // forward for oblique Lambert azimuthal after Snyder 1987 Map Projections - A working manual, p. 185
     this.forward = function(lon, lat, xy) {
         var sinLat = Math.sin(lat);
         var cosLat = Math.cos(lat);
@@ -6585,44 +6598,41 @@ function LambertAzimuthalEqualAreaPolar() {"use strict";
         return southPole ? -3 : -2;
     };
 }
-/*globals GraticuleOutline*/
+/*global GraticuleOutline, NaN*/
 
-function LambertAzimuthalEquatorial() {"use strict";
+function LambertAzimuthalEquatorial() {
+    "use strict";
 
-    var FORTPI = Math.PI / 4, EPS10 = 1.e-10;
+    var EPS10 = 1.e-10;
 
-    this.toString = function() {
+    this.toString = function () {
         return 'Lambert Azimuthal';
     };
 
-    this.isEqualArea = function() {
+    this.isEqualArea = function () {
         return true;
     };
 
-    this.initialize = function(conf) {
+    this.initialize = function (conf) {
     };
 
-    this.forward = function(lon, lat, xy) {
-        var k = 2 * Math.sin(FORTPI - lat * 0.5);
-        xy[0] = k * Math.sin(lon);
-        xy[1] = k * -Math.cos(lon);
-        /*
-        var x, y, sinLat = Math.sin(lat), cosLat = Math.cos(lat), cosLon = Math.cos(lon), sinLon = Math.sin(lon);
-        y = 1 + cosLat * cosLon;
-        if (y < EPS10) {
+    this.forward = function (lon, lat, xy) {
+        var sinLat = Math.sin(lat),
+                cosLat = Math.cos(lat),
+                cosLon = Math.cos(lon),
+                sinLon = Math.sin(lon),
+                k_ = 1 + cosLat * cosLon;
+        if (k_ < EPS10) {
             xy[0] = NaN;
             xy[1] = NaN;
         } else {
-            y = Math.sqrt(2 / y);
-            x = y * cosLat * sinLon;
-            y *= sinLat;
-
-            xy[0] = x;
-            xy[1] = y;
-        }*/
+            k_ = Math.sqrt(2 / k_);
+            xy[0] = k_ * cosLat * sinLon;
+            xy[1] = k_ * sinLat;
+        }
     };
 
-    this.inverse = function(x, y, lonlat) {
+    this.inverse = function (x, y, lonlat) {
         var cosz, rh, sinz, phi;
 
         rh = Math.sqrt(x * x + y * y);
@@ -6642,17 +6652,17 @@ function LambertAzimuthalEquatorial() {"use strict";
         lonlat[0] = (y === 0) ? 0 : Math.atan2(x, y);
     };
 
-    this.getOutline = function() {
+    this.getOutline = function () {
         return GraticuleOutline.circularOutline(2);
     };
 
-    this.getShaderUniforms = function() {
+    this.getShaderUniforms = function () {
         return {
-            "projectionID" : this.getID()
+            "projectionID": this.getID()
         };
     };
 
-    this.getID = function() {
+    this.getID = function () {
         return 28;
     };
 }
@@ -7153,7 +7163,7 @@ function aatan2(n, d) {
 function ProjectionFactory() {
 }
 
-ProjectionFactory.getSmallScaleProjection = function(smallScaleProjectionName) {
+ProjectionFactory.getSmallScaleProjection = function (smallScaleProjectionName) {
     switch (smallScaleProjectionName) {
         case 'Canters1':
             return new Canters1();
@@ -7184,7 +7194,7 @@ ProjectionFactory.getSmallScaleProjection = function(smallScaleProjectionName) {
     }
 };
 
-ProjectionFactory.create = function(conf) {
+ProjectionFactory.create = function (conf) {
 
     function smallScaleVerticalShift(conf, proj) {
         if (conf.lat0 === 0 || conf.zoomFactor < 1) {
@@ -7244,10 +7254,10 @@ ProjectionFactory.create = function(conf) {
     }
 
     function getMediumToLargeScaleProjectionForPortraitFormat(conf) {
-		var projection = new TransformedLambertAzimuthalTransverse(),
-		w = (conf.zoomLimit5 - conf.zoomFactor) / (conf.zoomLimit5 - conf.zoomLimit4);
-		projection.initialize(conf, w);
-		return new TransformedProjection(projection, 0, Math.PI - conf.lat0, true);
+        var projection = new TransformedLambertAzimuthalTransverse(),
+                w = (conf.zoomLimit5 - conf.zoomFactor) / (conf.zoomLimit5 - conf.zoomLimit4);
+        projection.initialize(conf, w);
+        return new TransformedProjection(projection, 0, Math.PI - conf.lat0, true);
     }
 
     function useCylindrical(conf) {
@@ -7259,8 +7269,8 @@ ProjectionFactory.create = function(conf) {
         // FIXME hack: add transformation from azimuthal to cylindrical
         // replace if condition with 
         // if (Math.abs(conf.lat0) < conf.cylindricalLowerLat) {
-        
-         if (Math.abs(conf.lat0) < latLimit) {
+
+        if (Math.abs(conf.lat0) < latLimit) {
             var cylProj = new LambertCylindricalEqualArea();
             // compute vertical shift for cylindrical projection
             // such that the central latitude appears in the center of the map.
@@ -7329,10 +7339,10 @@ ProjectionFactory.create = function(conf) {
         var w1 = (conf.zoomLimit5 - conf.zoomFactor) / (conf.zoomLimit5 - conf.zoomLimit4);
         var w2 = 1 - w1;
         var obliqueConicConf = {
-            lat0 : w1 * lat0Azimuthal + w2 * lat0Conic,
-            lat1 : w1 * lat1Azimuthal + w2 * lat1Conic,
-            lat2 : w1 * lat2Azimuthal + w2 * lat2Conic,
-            poleLat : w1 * poleLatAzimuthal + w2 * poleLatConic
+            lat0: w1 * lat0Azimuthal + w2 * lat0Conic,
+            lat1: w1 * lat1Azimuthal + w2 * lat1Conic,
+            lat2: w1 * lat2Azimuthal + w2 * lat2Conic,
+            poleLat: w1 * poleLatAzimuthal + w2 * poleLatConic
         };
 
         // adjust standard parallels for GUI display
@@ -7377,7 +7387,7 @@ ProjectionFactory.create = function(conf) {
             if (Math.abs(conf.lat0) > y) {
                 xl = (Math.abs(conf.lat0) - c) / m;
                 w = (conf.zoomFactor - xl) / (conf.zoomLimit4 - xl);
-                
+
                 // lat0 is 90deg when north pole is at the center of the map 
                 poleSign = (conf.lat0 > 0) ? 1 : -1;
                 lat0 = (conf.lat0 - poleSign * Math.PI / 2) * w + poleSign * Math.PI - conf.lat0;
@@ -7401,32 +7411,26 @@ ProjectionFactory.create = function(conf) {
     function getSmallToMediumScaleProjection(conf) {
         var projection, w, poleLat, p1, p2, dy;
 
-        projection = ProjectionFactory.getSmallScaleProjection(conf.smallScaleProjectionName);
+        // projection = ProjectionFactory.getSmallScaleProjection(conf.smallScaleProjectionName);
 
         // weight is linear interpolation between two scale limits
-        w = 1-(conf.zoomLimit2 - conf.zoomFactor) / (conf.zoomLimit2 - conf.zoomLimit1);
+        w = 1 - (conf.zoomLimit2 - conf.zoomFactor) / (conf.zoomLimit2 - conf.zoomLimit1);
 
         // if ( projection instanceof TransformedLambertAzimuthal) {
         //     // Use a weight for a smooth transition from the transformed to the regular Lambert azimuthal projection
         //     projection.transformToLambertAzimuthal(w);
         // } else {
-<<<<<<< HEAD
+        //
         // //     // small scale projection is not a transformed Lambert azimuthal
         // //     // create a blend between the small-scale projection and the Lambert azimuthal (via a modified Hammer)
-            //p1 = ProjectionFactory.getSmallScaleProjection(conf.smallScaleProjectionName);
-=======
-        //     // small scale projection is not a transformed Lambert azimuthal
-        //     // create a blend between the small-scale projection and the Lambert azimuthal (via a modified Hammer)
-            p1 = ProjectionFactory.getSmallScaleProjection(conf.smallScaleProjectionName);
->>>>>>> 4f596102f2aedf40b7758c8b9a548aeffd785480
-            // TODO use a transformed Lambert with a pole line when the world projection has a pole line?
-            p1 = TransformedLambertAzimuthal.Hammer();
-            p2 = new LambertAzimuthalEqualAreaOblique();
-            // p2.transformToLambertAzimuthal(0);
-            projection = new DoubleProjection(p1, p2);
-            projection.setW(w);
-        // }
+        //p1 = ProjectionFactory.getSmallScaleProjection(conf.smallScaleProjectionName);
 
+        // TODO use a transformed Lambert with a pole line when the world projection has a pole line?
+        p1 = ProjectionFactory.getSmallScaleProjection(conf.smallScaleProjectionName);
+        p2 = new LambertAzimuthalEquatorial();
+        projection = new DoubleProjection(p1, p2);
+        projection.setW(w);
+        
         if (conf.rotateSmallScale) {
             // latitude of the transformed pole
             poleLat = Math.PI / 2 - conf.lat0;
@@ -7444,12 +7448,12 @@ ProjectionFactory.create = function(conf) {
     /**
      * Returns a projection blend of the large scale projection and the Mercator (used for largest scales)
      */
-     function getLargeScaleToMercatorProjection(conf) {
+    function getLargeScaleToMercatorProjection(conf) {
         var w, p1, mercator, canvasRatio;
 
         // FIXME add special treatment for central latitudes close to poles, because the
         // web Mercator ends at approx. +/- 85 degrees north and south
-        
+
         canvasRatio = conf.canvasHeight / conf.canvasWidth;
         if (canvasRatio < conf.formatRatioLimit || canvasRatio > 1 / conf.formatRatioLimit) {
             // portrait or landscape format
@@ -7462,22 +7466,22 @@ ProjectionFactory.create = function(conf) {
         } else {
             // square format
             /*
-            // this works, but is not compatibel with vertex shader, because only one of the the projections is rotated.
-            p1 = TransformedLambertAzimuthal.LambertCylindrical();
-            // weight is linearly interpolated between the two Mercator scale limits
-            w = (conf.mercatorLimit2 - conf.zoomFactor) / (conf.mercatorLimit2 - conf.mercatorLimit1);
-            p1.transformToLambertAzimuthal(1 - w);
-            poleLat = Math.PI / 2 - conf.lat0;
-            var t = new TransformedProjection(p1, 0, poleLat, false);
-            return new WeightedProjectionMix(t, mercator, w);
-            */
+             // this works, but is not compatibel with vertex shader, because only one of the the projections is rotated.
+             p1 = TransformedLambertAzimuthal.LambertCylindrical();
+             // weight is linearly interpolated between the two Mercator scale limits
+             w = (conf.mercatorLimit2 - conf.zoomFactor) / (conf.mercatorLimit2 - conf.mercatorLimit1);
+             p1.transformToLambertAzimuthal(1 - w);
+             poleLat = Math.PI / 2 - conf.lat0;
+             var t = new TransformedProjection(p1, 0, poleLat, false);
+             return new WeightedProjectionMix(t, mercator, w);
+             */
             // same as commented code above, but packaged into a separate projection.
             // vertex shader will see this as a separate projection and use different schema for texture mapping
             w = (conf.mercatorLimit2 - conf.zoomFactor) / (conf.mercatorLimit2 - conf.mercatorLimit1);
             var transProj = new LambertMercatorTransformation(w);
             transProj.initialize(conf);
             return transProj;
-        }        
+        }
     }
 
     function getMediumToLargeScaleProjection(conf) {
@@ -7539,30 +7543,30 @@ ProjectionFactory.create = function(conf) {
             }
         } else if (absLat0 < conf.cylindricalLowerLat) {
             /*
-            // FIXME hack: add transformation from azimuthal to cylindrical
-            w = (conf.zoomFactor - conf.zoomLimit3) / (conf.zoomLimit4 - conf.zoomLimit3);
-            var cylProj = TransformedLambertAzimuthal.LambertCylindrical();
-            cylProj.transformToLambertAzimuthal(w);
-            var dy = -w * conf.lat0;
-            var rot = (1 - w) * conf.lat0;
-            console.log(w, dy, rot);
-            return new TransformedProjection(cylProj, dy, Math.PI / 2 - rot, true);
-            */
-            
-             // azimuthal projection close to equator needs special treatment
-             // an oblique line forming the lower limit for shifting and rotating the azimuthal projection
-             m = -conf.cylindricalLowerLat / (conf.zoomLimit4 - conf.zoomLimit3);
-             c = conf.cylindricalLowerLat - m * conf.zoomLimit3;
-             y = m * conf.zoomFactor + c;
-             if (absLat0 > y) {
-             // lat0 is above the oblique line. Use horizontal interpolation
-             // between an oblique line (neg. slope) and a vertical line at conf.zoomLimit4
-             scaleLimit = (absLat0 - c) / m;
-             w = (conf.zoomFactor - scaleLimit) / (conf.zoomLimit4 - scaleLimit);
-             } else {
-             // lat0 is below the oblique line, use normal azimuthal projection (w = 0)
-             return azimuthalProj;
-             }
+             // FIXME hack: add transformation from azimuthal to cylindrical
+             w = (conf.zoomFactor - conf.zoomLimit3) / (conf.zoomLimit4 - conf.zoomLimit3);
+             var cylProj = TransformedLambertAzimuthal.LambertCylindrical();
+             cylProj.transformToLambertAzimuthal(w);
+             var dy = -w * conf.lat0;
+             var rot = (1 - w) * conf.lat0;
+             console.log(w, dy, rot);
+             return new TransformedProjection(cylProj, dy, Math.PI / 2 - rot, true);
+             */
+
+            // azimuthal projection close to equator needs special treatment
+            // an oblique line forming the lower limit for shifting and rotating the azimuthal projection
+            m = -conf.cylindricalLowerLat / (conf.zoomLimit4 - conf.zoomLimit3);
+            c = conf.cylindricalLowerLat - m * conf.zoomLimit3;
+            y = m * conf.zoomFactor + c;
+            if (absLat0 > y) {
+                // lat0 is above the oblique line. Use horizontal interpolation
+                // between an oblique line (neg. slope) and a vertical line at conf.zoomLimit4
+                scaleLimit = (absLat0 - c) / m;
+                w = (conf.zoomFactor - scaleLimit) / (conf.zoomLimit4 - scaleLimit);
+            } else {
+                // lat0 is below the oblique line, use normal azimuthal projection (w = 0)
+                return azimuthalProj;
+            }
         } else {
             // horizontal interpolation between two scales (two vertical lines in the diagram)
             w = (conf.zoomFactor - (conf.zoomLimit3)) / (conf.zoomLimit4 - conf.zoomLimit3);
@@ -7582,7 +7586,7 @@ ProjectionFactory.create = function(conf) {
         t.inverse(conf.centerXY[0], conf.centerXY[1], centerLonLat);
         // compute the rotation angle applied to the sphere to recenter the map
         azimuthalProj.initialize({
-            lat0 : centerLonLat[1]
+            lat0: centerLonLat[1]
         });
         return new ShiftedProjection(azimuthalProj, -dy);
     }
@@ -7641,7 +7645,7 @@ ProjectionFactory.create = function(conf) {
     return create(conf);
 };
 
-ProjectionFactory.halfCentralMeridianLengthOfSmallScaleProjection = function(projection) {
+ProjectionFactory.halfCentralMeridianLengthOfSmallScaleProjection = function (projection) {
     var xy = [];
     projection.forward(0, Math.PI / 2, xy);
     return xy[1];
@@ -7651,7 +7655,7 @@ ProjectionFactory.halfCentralMeridianLengthOfSmallScaleProjection = function(pro
  * Returns the maximum positive central latitude for a small scale projection
  * with a globe that is not rotated.
  */
-ProjectionFactory.smallScaleMaxLat0 = function(mapHeight, proj) {
+ProjectionFactory.smallScaleMaxLat0 = function (mapHeight, proj) {
     var lonLat = [], y;
     // compute the vertical distance in projected coordinates between the equator and
     // the center of the map when the upper border of the map is aligned with the north pole
@@ -7669,7 +7673,7 @@ ProjectionFactory.smallScaleMaxLat0 = function(mapHeight, proj) {
  * All computations are done for the northern hemisphere. The returned latitude is
  * a positive value.
  */
-ProjectionFactory.polarLatitudeLimitForAlbersConic = function(topPtY, scale, polarLowerLatLimit, polarUpperLatLimit) {
+ProjectionFactory.polarLatitudeLimitForAlbersConic = function (topPtY, scale, polarLowerLatLimit, polarUpperLatLimit) {
     if (!polarLowerLatLimit) {
         polarLowerLatLimit = -Math.PI / 2;
     }
@@ -7688,9 +7692,9 @@ ProjectionFactory.polarLatitudeLimitForAlbersConic = function(topPtY, scale, pol
         // equal to the Lambert azimuthal. lat0 is the latitude with the origin of
         // the coordinate system, which will appear in the center of the map.
         albersConic.initialize({
-            lat0 : limitLat,
-            lat1 : Math.PI / 2,
-            lat2 : Math.PI / 2
+            lat0: limitLat,
+            lat1: Math.PI / 2,
+            lat2: Math.PI / 2
         });
         albersConic.forward(0, Math.PI / 2, xy);
         limitLat -= POL_LAT_INC;
@@ -7706,19 +7710,20 @@ ProjectionFactory.polarLatitudeLimitForAlbersConic = function(topPtY, scale, pol
  * The projection is flattened and centered on a pole, i.e. equal to a polar Lambert
  * azimuthal projection. The coordinate origin is at conf.lat0.
  */
-ProjectionFactory.verticalCoordinateOfFlattenedAlbersConicPole = function(conf) {
+ProjectionFactory.verticalCoordinateOfFlattenedAlbersConicPole = function (conf) {
     var xy = [];
     var conicProj = new AlbersConicEqualArea();
     conicProj.initialize({
-        lat0 : conf.lat0,
-        lat1 : (conf.lat0 > 0) ? Math.PI / 2 : -Math.PI / 2,
-        lat2 : (conf.lat0 > 0) ? Math.PI / 2 : -Math.PI / 2
+        lat0: conf.lat0,
+        lat1: (conf.lat0 > 0) ? Math.PI / 2 : -Math.PI / 2,
+        lat2: (conf.lat0 > 0) ? Math.PI / 2 : -Math.PI / 2
     });
     conicProj.forward(Math.PI / 2, conf.lat0 > 0 ? Math.PI / 2 : -Math.PI / 2, xy);
     return isNaN(xy[1]) ? 0 : xy[1];
 };
 
-ProjectionFactory.createLargeScaleProjection = function(conf) {"use strict";
+ProjectionFactory.createLargeScaleProjection = function (conf) {
+    "use strict";
     var projection, xy = [], canvasRatio = conf.canvasHeight / conf.canvasWidth;
     if (canvasRatio < conf.formatRatioLimit) {
         // landscape format
@@ -7752,7 +7757,7 @@ ProjectionFactory.createLargeScaleProjection = function(conf) {"use strict";
     }
 };
 
-ProjectionFactory.shiftedLambertAzimuthalPolar = function(conf) {
+ProjectionFactory.shiftedLambertAzimuthalPolar = function (conf) {
     var azimuthalProj = new LambertAzimuthalEqualAreaPolar();
     azimuthalProj.initialize(conf);
 
@@ -7763,7 +7768,8 @@ ProjectionFactory.shiftedLambertAzimuthalPolar = function(conf) {
     return azimuthalProj;
 };
 
-ProjectionFactory.largeScaleAlbersConicForLandscapeFormat = function(conf) {"use strict";
+ProjectionFactory.largeScaleAlbersConicForLandscapeFormat = function (conf) {
+    "use strict";
     var conicProj = new AlbersConicEqualArea();
     var w;
 
@@ -7804,10 +7810,10 @@ ProjectionFactory.largeScaleAlbersConicForLandscapeFormat = function(conf) {"use
         // adjusted standard parallels to blend with the azimuthal projection as
         // lat0 approaches the pole.
         /*
-        * Snyder 1987 Map Projections - A working manual, p. 98:
-        * If the pole is the only standard parallel, the Albers formulae
-        * simplify to provide the polar aspect of the Lambert Azimuthal Equal-Area.
-        */
+         * Snyder 1987 Map Projections - A working manual, p. 98:
+         * If the pole is the only standard parallel, the Albers formulae
+         * simplify to provide the polar aspect of the Lambert Azimuthal Equal-Area.
+         */
         // adjust the latitude at which the azimuthal projection is used for polar areas,
         // ensuring that the wedge of the conic projection is not visible on the map
         w = (conf.polarUpperLat - Math.abs(conf.lat0)) / (conf.polarUpperLat - conf.polarLowerLat);
@@ -8949,9 +8955,5 @@ ShpError.ERROR_UNDEFINED = 0;
 // a 'no data' error is thrown when the byte array runs out of data.
 ShpError.ERROR_NODATA = 1;
 
-<<<<<<< HEAD
-var adaptiveCompositeMapBuildTimeStamp = "September 14, 2017 02:51:55 PM";
-=======
-var adaptiveCompositeMapBuildTimeStamp = "September 13, 2017 07:49:06 PM";
->>>>>>> 4f596102f2aedf40b7758c8b9a548aeffd785480
+var adaptiveCompositeMapBuildTimeStamp = "September 21, 2017 11:16:34 AM";
 		
