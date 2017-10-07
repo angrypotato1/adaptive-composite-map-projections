@@ -39,8 +39,8 @@ function DoubleProjection(a, b) {
 
 //See Ma and Mb in Strebe's paper
     var matrix = function (T) {
-        return [[T[0][0] * w + 1 - w, T[0][1] * w],
-            [T[1][0] * w, T[1][1] * w + 1 - w]];
+        return [[T[0][0] * (1 - w) + w, T[0][1] * (1-w)],
+            [T[1][0] * (1 - w), T[1][1] * (1 - w) + w]];
     };
 
 //Finds area scale factor
