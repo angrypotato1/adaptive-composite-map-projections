@@ -169,63 +169,21 @@ ProjectionFactory.create = function (conf) {
 
         // compute rotation angle and vertical shift applied to medium-scale
         // azimuthal projection for the scale equal to conf.zoomLimit4
+        var w, l1, l0, l2, projection, p1, p2, poleSign, poleLat;
+        w = 1 - (conf.zoomLimit5 - conf.zoomFactor) / (conf.zoomLimit5 - conf.zoomLimit4);
+        l2 = Math.sin(conf.lat2);
+        l1 = Math.sin(conf.lat1);
+        l0 = Math.sin(conf.lat0);
+        conf.lat1 = Math.asin(l0 + w*(l2 - l0));
+        conf.lat2 = Math.asin(l1 + w*(l2 - l1));
+        p2 = ProjectionFactory.largeScaleAlbersConicForLandscapeFormat(conf);
+        p1 = getMediumScaleProjection(conf);
+        projection = new DoubleProjection(p1, p2);
+        projection.setW(w);
 
-        var azimuthalProj = new LambertAzimuthalEqualAreaOblique();
-        azimuthalProj.initialize(conf);
-
-        // compute the vertical shift
-        var w = (conf.zoomLimit5 - conf.zoomFactor) / (conf.zoomLimit5 - conf.zoomLimit4);
-        var dy = Math.abs(conf.topPt[1] - conf.bottomPt[1]) / 2 * w;
-        if (conf.lat0 < 0) {
-            dy = -dy;
-        }
-
-        // compute the rotation angle latRot that is applied to recenter the shifted graticule
-        var t = new ShiftedProjection(azimuthalProj, dy);
-        var centerLonLat = [];
-        t.inverse(conf.centerXY[0], conf.centerXY[1], centerLonLat);
-        var latRot = conf.lat0 - centerLonLat[1];
-
-        // standard parallels of the conic with normal aspect and rotated globe
-        var largeScaleAlbers = ProjectionFactory.largeScaleAlbersConicForLandscapeFormat(conf);
-        var lat0Conic = conf.lat0;
-        var lat1Conic = largeScaleAlbers.lat1;
-        var lat2Conic = largeScaleAlbers.lat2;
-        // position of north pole counted from equator
-        var poleLatConic = Math.PI / 2 - latRot;
-
-        // standard parallels of a "flat" conic that corresponds to an azimuthal on north or south pole
-        var lat0Azimuthal, lat1Azimuthal, lat2Azimuthal, poleLatAzimuthal;
-        if (conf.lat0 > 0) {
-            // central latitude and standard parallels are on the north pole
-            lat0Azimuthal = lat1Azimuthal = lat2Azimuthal = Math.PI / 2;
-            // the north pole is rotated from its normal position at 90 deg by (90-lat0)
-            poleLatAzimuthal = Math.PI - conf.lat0 - latRot;
-        } else {
-            // central latitude and standard parallels are on the south pole
-            lat0Azimuthal = lat1Azimuthal = lat2Azimuthal = -Math.PI / 2;
-            // north pole moves towards the equator
-            poleLatAzimuthal = -conf.lat0 - latRot;
-        }
-
-        // blend values for the oblique conic
-        var w1 = (conf.zoomLimit5 - conf.zoomFactor) / (conf.zoomLimit5 - conf.zoomLimit4);
-        var w2 = 1 - w1;
-        var obliqueConicConf = {
-            lat0: w1 * lat0Azimuthal + w2 * lat0Conic,
-            lat1: w1 * lat1Azimuthal + w2 * lat1Conic,
-            lat2: w1 * lat2Azimuthal + w2 * lat2Conic,
-            poleLat: w1 * poleLatAzimuthal + w2 * poleLatConic
-        };
-
-        // adjust standard parallels for GUI display
-        // FIXME
-        conf.lat1 = conf.lat0 + (obliqueConicConf.lat0 - obliqueConicConf.lat1);
-        conf.lat2 = conf.lat0 + (obliqueConicConf.lat0 - obliqueConicConf.lat2);
-
-        var obliqueConicProj = new AlbersConicEqualAreaOblique(dy);
-        obliqueConicProj.initialize(obliqueConicConf);
-        return obliqueConicProj;
+        poleSign = (conf.lat0 > 0) ? 1 : -1;
+        poleLat = poleSign * Math.PI - conf.lat0;
+        return new TransformedProjection(projection, 0, poleLat, true);
     }
 
     function getMediumToLargeScaleProjectionForLandscapeFormat(conf) {
